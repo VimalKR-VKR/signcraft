@@ -626,18 +626,7 @@ function showClient(client){
   document.querySelectorAll('.client-tab').forEach(t=>t.classList.toggle('active',t.dataset.client===client));
 }
 
-async function incrementAndShow(){
-  if(localIncremented)return;
-  localIncremented=true;
-  // Optimistic local update
-  const current=getStoredCount();
-  const next=current+1;
-  setStoredCount(next);
-  displayCount(next);
-  // Try real shared counter
-  const shared=await hitCountAPI();
-  if(shared!==null){displayCount(shared);setStoredCount(shared);}
-}
+
 
 // PRIMARY: Copy rich formatted content — pastes visually into Gmail / Outlook text box
 async function copyForGmail(){
