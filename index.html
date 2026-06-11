@@ -452,26 +452,38 @@ async function fetchCount() {
   if (!isFirebaseConfigured()) return null;
   try {
     const r = await fetch(FIREBASE_URL + COUNTER_PATH);
+    if (!r.ok) { console.error('Firebase read failed:', r.status, r.statusText); return null; }
     const val = await r.json();
+    console.log('Firebase read value:', val);
+    // val is null when the key doesn't exist yet — treat as 0
+    if (val === null || val === undefined) return 0;
     return typeof val === 'number' ? val : 0;
-  } catch (e) { return null; }
+  } catch (e) { console.error('Firebase fetch error:', e); return null; }
 }
 
-// Atomically increment using Firebase REST transaction
-async function incrementCount() {
-  if (!isFirebaseConfigured()) return null;
+// Write a new count value
+async function writeCount(n) {
+  if (!isFirebaseConfigured()) return false;
   try {
-    // Read current value
-    const current = await fetchCount() || 0;
-    const next = current + 1;
-    // Write new value
-    await fetch(FIREBASE_URL + COUNTER_PATH, {
+    const r = await fetch(FIREBASE_URL + COUNTER_PATH, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(next)
+      body: JSON.stringify(n)
     });
-    return next;
-  } catch (e) { return null; }
+    if (!r.ok) { console.error('Firebase write failed:', r.status, r.statusText); return false; }
+    console.log('Firebase wrote value:', n);
+    return true;
+  } catch (e) { console.error('Firebase write error:', e); return false; }
+}
+
+// Read → increment → write
+async function incrementCount() {
+  if (!isFirebaseConfigured()) return null;
+  const current = await fetchCount();
+  if (current === null) return null;
+  const next = current + 1;
+  const ok = await writeCount(next);
+  return ok ? next : null;
 }
 
 // Load count on page open
@@ -481,7 +493,8 @@ async function incrementCount() {
     return;
   }
   const count = await fetchCount();
-  if (count !== null) displayCount(count);
+  // Show 0 if db is empty (first ever load)
+  displayCount(count !== null ? count : 0);
 })();
 
 async function incrementAndShow() {
